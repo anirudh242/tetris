@@ -1,84 +1,38 @@
 #include <iostream>
 #include <vector>
-#include <windows.h> 
 #include <random>
+#include <windows.h> 
 #include <conio.h>   
-#include <cstdlib>
+#include <cstdlib>   
 
-
-
-const int WIDTH = 12, HEIGHT = 21;
+const int WIDTH = 12;
+const int HEIGHT = 21;
 std::vector<std::vector<int>> board(HEIGHT, std::vector<int>(WIDTH, 0));
 
 std::vector<std::vector<std::vector<int>>> pieces = {
-    // I piece
-    {
-        {0,0,0,0}, 
-        {1,1,1,1}, 
-        {0,0,0,0}, 
-        {0,0,0,0}
-    },
-    // O piece
-    {
-        {0,0,0,0}, 
-        {0,1,1,0}, 
-        {0,1,1,0}, 
-        {0,0,0,0}
-    },
-    // T piece
-    {
-        {0,0,0,0},
-        {0,1,0,0},
-        {1,1,1,0}, 
-        {0,0,0,0}
-    },
-    // L piece
-    {
-        {0,0,0,0}, 
-        {0,0,1,0}, 
-        {1,1,1,0}, 
-        {0,0,0,0}
-    },
-    // J piece
-    {
-        {0,0,0,0}, 
-        {1,0,0,0}, 
-        {1,1,1,0}, 
-        {0,0,0,0}
-    },
-    // Z piece
-    {
-        {0,0,0,0}, 
-        {1,1,0,0}, 
-        {0,1,1,0}, 
-        {0,0,0,0}
-    },
-    // S piece
-    {
-        {0,0,0,0},
-        {0,1,1,0}, 
-        {1,1,0,0}, 
-        {0,0,0,0}
-    }
+    {{0,0,0,0}, {1,1,1,1}, {0,0,0,0}, {0,0,0,0}}, // I
+    {{0,1,1,0}, {0,1,1,0}, {0,0,0,0}, {0,0,0,0}}, // O
+    {{0,1,0,0}, {1,1,1,0}, {0,0,0,0}, {0,0,0,0}}, // T
+    {{0,0,1,0}, {1,1,1,0}, {0,0,0,0}, {0,0,0,0}}, // L
+    {{1,0,0,0}, {1,1,1,0}, {0,0,0,0}, {0,0,0,0}}, // J
+    {{1,1,0,0}, {0,1,1,0}, {0,0,0,0}, {0,0,0,0}}, // Z
+    {{0,1,1,0}, {1,1,0,0}, {0,0,0,0}, {0,0,0,0}}  // S
 };
 
 int currentPiece = 0;
 int currentRotation = 0;
 int currentX = (WIDTH / 2) - 1; // center
-int currentY = 0;
+int currentY = 1;
+int score = 0;
 
 int getRotatedBlock(int piece, int rotation, int row, int col) {
-    int r = row;
-    int c = col;
-
-    for (int i = 0; i < rotation % 4; ++i) {
-        // transpose + reverse to rotate
-        int temp = r;
-        r = c;
-        c = 3 - temp;
+    switch (rotation % 4) {
+        case 0: return pieces[piece][row][col];           // 0 degrees
+        case 1: return pieces[piece][3 - col][row];       // 90 degrees (inverse)
+        case 2: return pieces[piece][3 - row][3 - col];   // 180 degrees (inverse)
+        case 3: return pieces[piece][col][3 - row];       // 270 degrees (inverse)
     }
-
-    return pieces[piece][r][c];
+    return 0;
 }
 
 void clearScreen()
@@ -108,12 +62,14 @@ void drawBoard()
 {
     std::vector<std::vector<int>> displayBoard = board; // temporary to display before locking
 
-
-     
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
             if (getRotatedBlock(currentPiece, currentRotation, i, j) == 1) {
-                displayBoard[currentY + i][currentX + j] = 1; 
+                int boardY = currentY + i;
+                int boardX = currentX + j;
+                if (boardY >= 0 && boardY < HEIGHT && boardX >= 0 && boardX < WIDTH) {
+                    displayBoard[boardY][boardX] = 1; 
+                }
             }
         }
     }
@@ -136,17 +92,22 @@ void drawBoard()
         }
         std::cout << std::endl;
     }
+
+    std::cout << "Score: " << score << std::endl;
 }
 
-bool doesPieceFit(int  piece, int rot, int xPos, int yPos)
-{
+bool doesPieceFit(int piece, int rot, int xPos, int yPos)
+{ 
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)
         {
-            if (getRotatedBlock(piece, rot, i, j)  == 1) {
+            if (getRotatedBlock(piece, rot, i, j) == 1) {
+                if (yPos + i >= HEIGHT || xPos + j >= WIDTH || xPos + j < 0 || yPos + i < 0) {
+                    return false; 
+                }
                 if (board[yPos + i][xPos + j] != 0) {
-                    return false;
+                    return false; 
                 }
             }
         } 
@@ -165,12 +126,12 @@ int main(int argc, char const *argv[])
     initBoard();
     
     bool isGameOver = false;
-    int tickCounter = 10;
-    int gameSpeed = 20;
+    int tickCounter = 0;
+    int gameSpeed = 5;
 
     while (!isGameOver) 
     {
-        Sleep(100);
+        Sleep(5);
         tickCounter++;
 
         char input = 0;
@@ -178,27 +139,27 @@ int main(int argc, char const *argv[])
             input = _getch();
         }
 
-        if (input == 'a' || input == 'A') { // Left
+        if (input == 'a' || input == 'A') { 
             if (doesPieceFit(currentPiece, currentRotation, currentX - 1, currentY)) 
             {
                 currentX--;
             }
         }
-        if (input == 'd' || input == 'D') { // Right
+        if (input == 'd' || input == 'D') { 
             if (doesPieceFit(currentPiece, currentRotation, currentX + 1, currentY))
              {
                 currentX++;
             }
         }
         if (input == 's' || input == 'S') 
-        { // Down (Soft Drop)
+        { 
             if (doesPieceFit(currentPiece, currentRotation, currentX, currentY + 1)) 
             {
                 currentY++;
             }
         }
         if (input == 'w' || input == 'W') 
-        { // Rotate
+        { 
             int nextRotation = (currentRotation + 1) % 4;
             if (doesPieceFit(currentPiece, nextRotation, currentX, currentY)) 
             {
@@ -208,6 +169,7 @@ int main(int argc, char const *argv[])
 
         if (tickCounter >= gameSpeed)
         {
+            tickCounter = 0;
             if (doesPieceFit(currentPiece, currentRotation, currentX, currentY + 1))
             {
                 currentY++;
@@ -218,14 +180,50 @@ int main(int argc, char const *argv[])
                 for (int i = 0; i < 4; ++i) {
                     for (int j = 0; j < 4; ++j) {
                         if (getRotatedBlock(currentPiece, currentRotation, i, j) == 1) {
-                            board[currentY + i][currentX + j] = 1;
+                             if (currentY + i >= 0 && currentY + i < HEIGHT && currentX + j >= 0 && currentX + j < WIDTH) {
+                                board[currentY + i][currentX + j] = 1;
+                            }
                         }
                     }
                 }
 
-                currentRotation = 0;\
-                currentX = (WIDTH / 2) - 2;
-                currentY = 0;
+                int linesCleared = 0;
+                for (int i = HEIGHT - 2; i >= 1; --i)
+                {
+                    bool isLineFull = true;
+                    for (int j = 1; j < WIDTH - 1; j++)
+                    {
+                        if (board[i][j] == 0)
+                        {
+                            isLineFull = false;
+                            break;
+                        }
+                    }
+
+                    if (isLineFull)
+                    {
+                        linesCleared++;
+                        for (int j = i; j > 1; --j) // to move all lines down by one
+                        {
+                            for (int k = 1; k < WIDTH - 1; ++k)
+                            {
+                                board[j][k] = board[j - 1][k];
+                            }
+                        }
+                        for (int k = 1; k < WIDTH - 1; ++k)
+                        {
+                            board[1][k] = 0;
+                        }
+                        i++;
+                    }
+                }
+                
+                if (linesCleared > 0)
+                    score += linesCleared * 10 * linesCleared;
+
+                currentRotation = 0;
+                currentX = (WIDTH / 2) - 1;
+                currentY = 1;
                 currentPiece = distrib(gen);
 
                 if (!doesPieceFit(currentPiece, currentRotation, currentX, currentY)) {
@@ -238,5 +236,7 @@ int main(int argc, char const *argv[])
     }
 
     std::cout << "Game over!" << std::endl;
+    std::cout << "Your score was: " << score << std::endl;
     return 0;
 }
+
